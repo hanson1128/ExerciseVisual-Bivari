@@ -1,0 +1,251 @@
+<br> 
+<center><img src="http://i.imgur.com/sSaOozN.png" width="500"></center>
+
+## Course: Visual Analytics for Policy and Management - Exercise 2 BIVAR
+
+### Hanson Shi
+
+Insert data
+```{r collect, eval=TRUE}
+link="https://github.com/EvansDataScience/data/raw/master/crime.RData"
+load(file = url(link))
+```
+
+```{r call}
+library(ggplot2)
+library(magrittr)
+```
+
+
+-----Exercise 1-----
+```{r Bivari-Lolliplot,eval=TRUE}
+CrimeCol=table(crime$crimecat,crime$Occurred.DayTime)%>%
+         prop.table(margin = 2)%>%
+         "*"(100)%>%
+         round(3)
+df.C=as.data.frame(CrimeCol)
+colnames(df.C)=c('Crime','Daytime','Percent')
+base = ggplot(df.C, aes(x = reorder(Crime, Percent), y = Percent)) 
+lolliplotC1=  base + geom_segment(aes(y = 0, 
+                                      x = reorder(Crime, Percent), 
+                                      yend = Percent, 
+                                      xend = Crime)) 
+lolliplotC2 = lolliplotC1 + geom_point() + facet_wrap( ~ Daytime ,nrow = 1) 
+lolliplotC2 + coord_flip() + 
+              theme(axis.text.y = element_text(size=6,angle = 45)) + 
+              labs(title="Crime report rate by different time of the day",
+                   caption = "Sourse:Seattle Open Data Portal",
+                   x="crime",
+                   y="percent")
+```
+
+
+
+-----Exercise 2-----
+
+```{r heatAscending, eval=TRUE}
+base  = ggplot(df.C, aes(x = Daytime, y = reorder(Crime, -Percent), fill = Percent)) 
+heat1 = base  +  geom_tile() 
+heat2 = heat1 +  scale_fill_gradient(low = "yellow", 
+                                   high = "purple")
+heat3 = heat2 +  theme_classic() 
+
+heat4 = heat3 +  theme(axis.text.x = element_text(angle = 90, vjust = 0.6), 
+                       legend.title = element_blank(),
+                       legend.position="top", 
+                       legend.direction="horizontal",
+                       legend.key.width=unit(1, "cm"),
+                       legend.key.height=unit(1, "cm")) 
+heat4 + labs(title="Ascending crime report rate by different time of the day",
+             caption = "Sourse:Seattle Open Data Portal",
+             y="crime",
+             x="percent")
+```
+
+
+-----Exercise 3-----
+```{r Total crimes with a year or longer to report, eval=TRUE}
+crimeY2000=crime[(crime$DaysToReport>=365) & (crime$year>=2000),]
+crimeY2000$YearsToReport=crimeY2000$DaysToReport/365
+crimeYearGG=crimeY2000[complete.cases(crimeY2000$YearsToReport),]
+
+base  = ggplot(crimeYearGG,aes(x=factor(year), y=YearsToReport))
+mins  = base + stat_summary(fun.y=min,
+                            geom="line",
+                            show.legend = T,size=1,
+                            aes(group=1,col='Min'))
+
+minsMaxs = mins + stat_summary(fun.y=max,
+                               geom="line",
+                               linetype='dashed',
+                               size=1,show.legend = F,
+                               aes(group=1,col='Max'))
+
+minsMaxsMd = minsMaxs + stat_summary(fun.y=median,
+                                     geom="line",size=1,
+                                     aes(group=1,col='Median'))
+
+all1 = minsMaxsMd + scale_colour_manual(name="Trends",
+                                        values=c("steelblue", "black","darkred")) +
+                    labs(title = "Trend of crime reporting time by year",
+                         subtitle = "For crimes that took a year or longer to report since 2000",
+                         caption ="Sourse:Seattle Open Data Portal",
+                         x="year",
+                         y="years to report") +
+                    theme(legend.title = element_blank())
+all1
+```
+
+
+```{r Total crimes with less than a year to report, eval=TRUE}
+crimeYnew = crime[(crime$DaysToReport<365) & (crime$year>=2000),]
+crimeYnew$WeeksToReport = crimeYnew$DaysToReport/7
+crimeYnew$YearsToReport = crimeYnew$DaysToReport/365
+crimeYearGG2 = crimeYnew[complete.cases(crimeYnew$WeeksToReport) & complete.cases(crimeYnew$crimecat) & complete.cases(crimeYnew$YearsToReport),]
+
+base = ggplot(crimeYearGG2,aes(x=factor(year), y= DaysToReport)) 
+mins = base + stat_summary(fun.y=min,size=1.5,
+                           geom="line", linetype='dashed',show.legend = T,
+                           aes(group=1,col='Min'))
+minsMaxs = mins + stat_summary(fun.y=max,
+                               geom="line",size=1,show.legend = F,
+                               aes(group=1,col='Max'))
+minsMaxsMd = minsMaxs + stat_summary(fun.y=median,
+                                     geom="line",size=1,
+                                     aes(group=1,col='Median'))
+all2 = minsMaxsMd + scale_colour_manual(name="Trends",
+                                        values=c("steelblue", "black","darkred"))+
+                    labs(title = "Trend of crime reporting time by day",
+                         subtitle = "For crimes that took less than a year to report since 2000",
+                         caption ="Sourse:Seattle Open Data Portal",
+                         x="year",
+                         y="days to report") +
+                    theme(legend.title = element_blank())
+all2 
+```
+
+We also found variability in the type of crime, so we could try a story with it; first with Years to report (for crimes that took a year or longer to report, after year 2000):
+
+```{r Different crimes reported a year or longer, eval=TRUE}
+base = ggplot(crimeYearGG,
+             aes(x = reorder(crimecat, YearsToReport, FUN = max), 
+                 y=YearsToReport)) 
+mins = base + stat_summary(fun.y=min,size=1,
+                           geom="line", linetype='dashed',show.legend = T,
+                           aes(group=1,col='Min'))
+minsMaxs = mins + stat_summary(fun.y=max,
+                               geom="line",size=1,show.legend = F,
+                               aes(group=1,col='Max'))
+minsMaxsMd = minsMaxs + stat_summary(fun.y=median, size=1,
+                                     geom="line",
+                                     aes(group=1,col='Median'))
+all3 = minsMaxsMd + scale_colour_manual(name="Trends",
+                                        values=c("steelblue", "black","darkred")) +
+       coord_flip() +
+       labs(title = "Reporting time by year for different crimes",
+            subtitle = "For crimes that took a year or longer to report since 2000",
+            caption ="Sourse:Seattle Open Data Portal",
+            x="crime",
+            y="years to report") +
+       theme(legend.title = element_blank())
+all3
+```
+
+
+```{r Different crimes reported less than a year, eval=TRUE}
+base = ggplot(crimeYearGG2,
+              aes(x = reorder(crimecat, DaysToReport, FUN = max),
+                  y =DaysToReport)) 
+mins1 = base + stat_summary(fun.y=min,size=1.5,
+                            geom="line", linetype='dashed',show.legend = T,
+                            aes(group=1,col='Min'))
+minsMaxs1 = mins1 + stat_summary(fun.y=max,
+                                 geom="line",size=1,show.legend = F,
+                                 aes(group=1,col='Max'))
+minsMaxsMd1 = minsMaxs1 + stat_summary(fun.y=median,size=1,
+                                       geom="line",
+                                       aes(group=2,col='Median'))
+all4 = minsMaxsMd1 + scale_colour_manual(name="Trends",
+                                         values=c("steelblue", "black","darkred")) +
+       coord_flip() +
+       labs(title = "Reporting time by day for different crimes",
+            subtitle = "For crimes that took less a year to report since 2000",
+            caption ="Sourse:Seattle Open Data Portal",
+            x="crime",
+            y="days to report") +
+       theme(legend.title = element_blank())
+all4
+```
+
+
+```{r anova, eval=TRUE}
+anovaData = crimeY2000[crimeY2000$YearsToReport>=5,]
+anovaData = anovaData[complete.cases(anovaData),]
+library(Rmisc)
+library(ggpubr)
+ggline(data=anovaData,
+       x = "Precinct", 
+       y = "YearsToReport",
+       add = 'mean_ci',
+       error.plot = "pointrange") + 
+       scale_y_continuous(breaks=seq(7,10,0.5))+
+       labs(title = "Crime reporting time range by year across precinct",
+            subtitle = "For crimes that took more than 5 year to report since 2000",
+            caption ="Sourse:Seattle Open Data Portal",
+            x="pricinct",
+            y="years to report")
+```
+
+```{r compute the analysis, eval=TRUE}
+res.aov <- aov(YearsToReport ~ Precinct, data = anovaData)# Compute the analysis of variance
+kruskal.test(YearsToReport ~ Precinct, data = anovaData)# # Compute the non parametric analysis of variance
+```
+
+-----Exercise 4-----
+
+```{r crimes reported by day across neighborhoods, eval=TRUE}
+daysByNeigh = tapply(crime$DaysToReport, crime$Neighborhood, mean,na.rm=T) 
+crimesByNeigh = tapply(crime$crimecat, crime$Neighborhood, length)%>%      
+                       prop.table()%>%
+                       "*"(100)%>% 
+                       round(2)
+library(tibble)
+daysByNeigh = as.data.frame(daysByNeigh)%>%rownames_to_column()
+crimesByNeigh = as.data.frame(crimesByNeigh)%>%rownames_to_column()
+num_num =merge(daysByNeigh,crimesByNeigh) 
+```
+
+```{r scatter plot, eval=TRUE}
+library(ggrepel)
+base = ggplot(num_num, aes(daysByNeigh,crimesByNeigh,
+                           label=rowname))
+plot1=  base +  geom_point() 
+plot1 + geom_text_repel(aes(label=ifelse(crimesByNeigh>=5,
+                                         num_num$rowname, "")))+
+        labs(title = "Neighborhood safety by crime number and reporting days",
+             subtitle = "For neighborhoods that represent at least 5% of crimes",
+             caption ="Sourse:Seattle Open Data Portal",
+             x="days",
+             y="crimes")
+```
+
+
+```{r density,eval=TRUE}
+base   =  ggplot(num_num, aes(daysByNeigh,crimesByNeigh)) 
+scatp1 =  base   + stat_density_2d(aes(fill = ..density..), 
+                   geom = "raster", contour = FALSE)
+scatp2 =  scatp1 + geom_text_repel(aes(label=ifelse(crimesByNeigh>=5,
+                                                    num_num$rowname, "")))
+scatp3 =  scatp2 +  theme(legend.position='none') 
+scatp4 =  scatp3 + scale_fill_distiller(palette="Greys", direction=1) 
+scatp4 +  scale_x_continuous(expand = c(0, 0)) + 
+          scale_y_continuous(expand = c(0, 0)) +
+          labs(title = "Neighborhood safety by crime number and reporting days",
+               subtitle = "For neighborhoods that represent at least 5% of crimes",
+               caption ="Sourse:Seattle Open Data Portal",
+               x="days",
+               y="crimes")
+```
+
+
+
